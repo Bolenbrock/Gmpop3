@@ -3,8 +3,8 @@ const axios = require('axios');
 require('dotenv').config();
 
 // Установите ваш токен Telegram-бота и API-ключ Google Gemini из .env
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'ваш_токен_telegram_бота'; // Замените на ваш токен
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'ваш_api_ключ_gemini'; // Замените на ваш ключ
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8164082658:AAHUrdDL5PRTBF5Xb5UPtg5CHh8AseDsR_U'; // Замените на ваш токен
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyB9hd88hfKcIEAFgmKPuzQNnD1icrjfb9k'; // Замените на ваш ключ
 
 // Проверка наличия API-ключа Telegram-бота
 if (!TELEGRAM_BOT_TOKEN) {
