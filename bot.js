@@ -35,33 +35,13 @@ async function getGeminiResponse(userMessage) {
                 },
             }
         );
-        return response.data.candidates[0].content.parts[0].text;
+
+        // Проверяем, что ответ содержит данные и структуру, которую мы ожидаем
+        if (response.data && response.data.candidates && response.data.candidates[0] && response.data.candidates[0].content && response.data.candidates[0].content.parts && response.data.candidates[0].content.parts[0]) {
+            return response.data.candidates[0].content.parts[0].text;
+        } else {
+            console.error('Ошибка: Неожиданный формат ответа от Gemini API:', response.data);
+            return 'Извините, произошла ошибка при обработке вашего запроса.';
+        }
     } catch (error) {
-        console.error('Ошибка при запросе к Gemini API:', error.response?.data || error.message);
-        return 'Извините, произошла ошибка при обработке вашего запроса.';
-    }
-}
-
-// Обработка команды /start
-bot.onText(/\/start/, (msg) => {
-    const chatId = msg.chat.id;
-    bot.sendMessage(chatId, 'Привет! Я ваш бот с Google Gemini. Напишите мне что-нибудь, и я постараюсь ответить.');
-});
-
-// Обработка текстовых сообщений
-bot.on('message', async (msg) => {
-    const chatId = msg.chat.id;
-    const userMessage = msg.text;
-
-    // Игнорируем команду /start и пустые сообщения
-    if (userMessage === '/start' || !userMessage.trim()) return;
-
-    // Получаем ответ от Google Gemini
-    const geminiResponse = await getGeminiResponse(userMessage);
-
-    // Отправляем ответ пользователю
-    bot.sendMessage(chatId, `Gemini ответ:\n${geminiResponse}`);
-});
-
-// Запуск бота
-console.log('Бот запущен...');
+        console.error('
