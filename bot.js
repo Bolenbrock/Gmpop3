@@ -1,45 +1,67 @@
 const TelegramBot = require('node-telegram-bot-api');
+const axios = require('axios');
+require('dotenv').config();
 
-// Замените на ваш токен
-const token = '8164082658:AAHUrdDL5PRTBF5Xb5UPtg5CHh8AseDsR_U';
+// Установите ваш токен Telegram-бота и API-ключ Google Gemini из .env
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'ваш_токен_telegram_бота'; // Замените на ваш токен
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'ваш_api_ключ_gemini'; // Замените на ваш ключ
+
+// Проверка наличия API-ключа Telegram-бота
+if (!TELEGRAM_BOT_TOKEN) {
+    console.error('Ошибка: Не указан токен Telegram-бота. Убедитесь, что он указан в файле .env или в коде.');
+    process.exit(1); // Завершаем выполнение скрипта
+}
 
 // Создаем экземпляр бота
-const bot = new TelegramBot(token, { polling: true });
+const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
-// Обработчик команды /start
+// Функция для взаимодействия с Google Gemini API
+async function getGeminiResponse(userMessage) {
+    try {
+        const response = await axios.post(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+            {
+                contents: [
+                    {
+                        parts: [
+                            { text: userMessage }
+                        ]
+                    }
+                ]
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            }
+        );
+        return response.data.candidates[0].content.parts[0].text;
+    } catch (error) {
+        console.error('Ошибка при запросе к Gemini API:', error.response?.data || error.message);
+        return 'Извините, произошла ошибка при обработке вашего запроса.';
+    }
+}
+
+// Обработка команды /start
 bot.onText(/\/start/, (msg) => {
-  const chatId = msg.chat.id;
-  const options = {
-    reply_markup: {
-      keyboard: [['Команда 1', 'Команда 2'], ['/help']],
-      resize_keyboard: true,
-      one_time_keyboard: true,
-    },
-  };
-  bot.sendMessage(chatId, 'Выберите действие:', options);
+    const chatId = msg.chat.id;
+    bot.sendMessage(chatId, 'Привет! Я ваш бот с Google Gemini. Напишите мне что-нибудь, и я постараюсь ответить.');
 });
 
-// Обработчик команды /help
-bot.onText(/\/help/, (msg) => {
-  const chatId = msg.chat.id;
-  const helpText = `
-  Вот список доступных команд:
-  /start - Начать работу с ботом
-  /help - Получить справку
-  `;
-  bot.sendMessage(chatId, helpText);
+// Обработка текстовых сообщений
+bot.on('message', async (msg) => {
+    const chatId = msg.chat.id;
+    const userMessage = msg.text;
+
+    // Игнорируем команду /start и пустые сообщения
+    if (userMessage === '/start' || !userMessage.trim()) return;
+
+    // Получаем ответ от Google Gemini
+    const geminiResponse = await getGeminiResponse(userMessage);
+
+    // Отправляем ответ пользователю
+    bot.sendMessage(chatId, `Gemini ответ:\n${geminiResponse}`);
 });
 
-// Обработчик текстовых сообщений и нажатий на кнопки
-bot.on('message', (msg) => {
-  const chatId = msg.chat.id;
-  const text = msg.text;
-
-  if (text === 'Команда 1') {
-    bot.sendMessage(chatId, 'Вы выбрали Команду 1');
-  } else if (text === 'Команда 2') {
-    bot.sendMessage(chatId, 'Вы выбрали Команду 2');
-  } else if (text !== '/start' && text !== '/help') {
-    bot.sendMessage(chatId, `Вы сказали: ${text}`);
-  }
-});
+// Запуск бота
+console.log('Бот запущен...');
