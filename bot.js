@@ -15,11 +15,8 @@ if (!TELEGRAM_BOT_TOKEN || !GEMINI_API_KEY) {
 // Создаем экземпляр бота
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
-/**
- * Функция для взаимодействия с Google Gemini API.
- * @param {string} userMessage - Сообщение пользователя.
- * @returns {Promise<string>} - Ответ от Gemini API или сообщение об ошибке.
- */
+
+// Функция для взаимодействия с Google Gemini API
 async function getGeminiResponse(userMessage) {
     try {
         const response = await axios.post(
@@ -39,51 +36,36 @@ async function getGeminiResponse(userMessage) {
                 },
             }
         );
-
-        // Проверяем структуру ответа с использованием опциональной цепочки
-        const responseText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (responseText) {
-            return responseText;
-        } else {
-            console.error('Ошибка: Неожиданный формат ответа от Gemini API:', response.data);
-            return 'Извините, произошла ошибка при обработке вашего запроса.';
-        }
+        return response.data.candidates[0].content.parts[0].text;
     } catch (error) {
         console.error('Ошибка при запросе к Gemini API:', error.response?.data || error.message);
         return 'Извините, произошла ошибка при обработке вашего запроса.';
     }
 }
 
-/**
- * Обработка команды /start.
- */
+
+// Обработка команды /start
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     bot.sendMessage(chatId, 'Привет! Я ваш бот с Google Gemini. Напишите мне что-нибудь, и я постараюсь ответить.');
 });
 
-/**
- * Обработка текстовых сообщений.
- */
+
+// Обработка текстовых сообщений
+
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const userMessage = msg.text;
 
     // Игнорируем команду /start и пустые сообщения
-    if (userMessage === '/start' || !userMessage?.trim()) {
-        return;
-    }
 
-    try {
-        // Получаем ответ от Google Gemini
-        const geminiResponse = await getGeminiResponse(userMessage);
+    if (userMessage === '/start' || !userMessage.trim()) return;
 
-        // Отправляем ответ пользователю
-        await bot.sendMessage(chatId, `Gemini ответ:\n${geminiResponse}`);
-    } catch (error) {
-        console.error('Ошибка при обработке сообщения:', error);
-        await bot.sendMessage(chatId, 'Произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте позже.');
-    }
+    // Получаем ответ от Google Gemini
+    const geminiResponse = await getGeminiResponse(userMessage);
+
+    // Отправляем ответ пользователю
+    bot.sendMessage(chatId, `Gemini ответ:\n${geminiResponse}`);
 });
 
 // Запуск бота
