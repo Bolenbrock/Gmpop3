@@ -1,9 +1,9 @@
-const TelegramBot = require('node-telegram-bot-api');
+ TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 require('dotenv').config();
 
 // Загрузка переменных окружения
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+ TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // Проверка наличия обязательных переменных окружения
