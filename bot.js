@@ -1,72 +1,149 @@
- TelegramBot = require('node-telegram-bot-api');
-const axios = require('axios');
 require('dotenv').config();
+const TelegramBot = require('node-telegram-bot-api');
+const MailParser = require('mailparser').MailParser;
+const poplib = require('poplib');
+const fs = require('fs');
 
-// Загрузка переменных окружения
- TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+// Получение токена Telegram и данных для подключения к Gmail из переменных окружения
+const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
+const GMAIL_EMAIL = process.env.GMAIL_EMAIL;
+const GMAIL_PASSWORD = process.env.GMAIL_PASSWORD;
 
-// Проверка наличия обязательных переменных окружения
-if (!TELEGRAM_BOT_TOKEN || !GEMINI_API_KEY) {
-    console.error('Ошибка: Не указаны обязательные переменные окружения. Убедитесь, что TELEGRAM_BOT_TOKEN и GEMINI_API_KEY указаны в файле .env.');
-    process.exit(1); // Завершаем выполнение скрипта
-}
+// Создаем экземпляр Telegram-бота
+const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
 
-// Создаем экземпляр бота
-const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
+// Функция для получения списка писем
+async function getMailList(chatId) {
+    const pop = new poplib({
+        host: 'pop.gmail.com',
+        port: 995,
+        secure: true,
+        username: GMAIL_EMAIL,
+        password: GMAIL_PASSWORD,
+    });
 
+    pop.connect((err) => {
+        if (err) {
+            console.error(err);
+            bot.sendMessage(chatId, 'Ошибка при подключении к почте.');
+            return;
+        }
 
-// Функция для взаимодействия с Google Gemini API
-async function getGeminiResponse(userMessage) {
-    try {
-        const response = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
-            {
-                contents: [
-                    {
-                        parts: [
-                            { text: userMessage }
-                        ]
-                    }
-                ]
-            },
-            {
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+        pop.list((err, messages) => {
+            if (err) {
+                console.error(err);
+                bot.sendMessage(chatId, 'Ошибка при получении списка писем.');
+                return;
             }
-        );
-        return response.data.candidates[0].content.parts[0].text;
-    } catch (error) {
-        console.error('Ошибка при запросе к Gemini API:', error.response?.data || error.message);
-        return 'Извините, произошла ошибка при обработке вашего запроса.';
-    }
+
+            if (messages.length === 0) {
+                bot.sendMessage(chatId, 'Нет новых писем.');
+                pop.quit();
+                return;
+            }
+
+            let messageCount = 0;
+            messages.forEach((message, index) => {
+                pop.retrieve(index + 1, async (err, data) => {
+                    if (err) {
+                        console.error(err);
+                        return;
+                    }
+
+                    const mailparser = new MailParser();
+                    mailparser.on('headers', (headers) => {
+                        const from = headers.get('from');
+                        const subject = headers.get('subject');
+                        messageCount++;
+                        bot.sendMessage(chatId, `Письмо ${messageCount}:\nОт: ${from}\nТема: ${subject}`);
+                    });
+
+                    mailparser.on('data', (data) => {
+                        if (data.type === 'text') {
+                            // Вывод текста письма (можно раскомментировать для отладки)
+                            // console.log(data.text);
+                        }
+                    });
+
+                    mailparser.write(data);
+                    mailparser.end();
+
+                    // После обработки всех писем завершаем соединение
+                    if (index === messages.length - 1) {
+                        pop.quit();
+                    }
+                });
+            });
+        });
+    });
 }
 
+// Функция для удаления письма по номеру
+function deleteMail(pop, number, chatId) {
+    pop.delete(number, (err) => {
+        if (err) {
+            bot.sendMessage(chatId, 'Ошибка при удалении письма.');
+            console.error(err);
+            return;
+        }
+        bot.sendMessage(chatId, 'Письмо успешно удалено.');
+        pop.quit();
+    });
+}
 
-// Обработка команды /start
+// Обработчик команды /start
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
-    bot.sendMessage(chatId, 'Привет! Я ваш бот с Google Gemini. Напишите мне что-нибудь, и я постараюсь ответить.');
+    bot.sendMessage(chatId, 'Привет! Я бот для управления почтой Gmail.');
 });
 
-
-// Обработка текстовых сообщений
-
-bot.on('message', async (msg) => {
+// Обработчик команды /list
+bot.onText(/\/list/, (msg) => {
     const chatId = msg.chat.id;
-    const userMessage = msg.text;
-
-    // Игнорируем команду /start и пустые сообщения
-
-    if (userMessage === '/start' || !userMessage.trim()) return;
-
-    // Получаем ответ от Google Gemini
-    const geminiResponse = await getGeminiResponse(userMessage);
-
-    // Отправляем ответ пользователю
-    bot.sendMessage(chatId, `Gemini ответ:\n${geminiResponse}`);
+    bot.sendMessage(chatId, 'Получение списка новых писем...');
+    getMailList(chatId);
 });
 
-// Запуск бота
-console.log('Бот запущен...');
+// Обработчик команды /delete
+bot.onText(/\/delete (.+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const number = parseInt(match[1], 10);
+
+    if (!isNaN(number)) {
+        const pop = new poplib({
+            host: 'pop.gmail.com',
+            port: 995,
+            secure: true,
+            username: GMAIL_EMAIL,
+            password: GMAIL_PASSWORD,
+        });
+
+        pop.connect((err) => {
+            if (err) {
+                console.error(err);
+                bot.sendMessage(chatId, 'Ошибка при подключении к почте.');
+                return;
+            }
+
+            pop.list((err, messages) => {
+                if (err) {
+                    console.error(err);
+                    bot.sendMessage(chatId, 'Ошибка при получении списка писем.');
+                    return;
+                }
+
+                if (number > messages.length || number < 1) {
+                    bot.sendMessage(chatId, 'Неверный номер письма.');
+                    pop.quit();
+                    return;
+                }
+
+                deleteMail(pop, number, chatId);
+            });
+        });
+    } else {
+        bot.sendMessage(chatId, 'Неверный формат номера письма. Используйте /delete <номер>');
+    }
+});
+
+console.log('Telegram bot started!');
