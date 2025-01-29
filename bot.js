@@ -1,7 +1,7 @@
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const MailParser = require('mailparser').MailParser;
-const Mailin = require('mailin');
+const Pop3 = require('pop3');
 
 // Получение токена Telegram и данных для подключения к Gmail из переменных окружения
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
@@ -13,27 +13,28 @@ const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
 
 // Функция для получения списка писем
 async function getMailList(chatId) {
-    const mailin = new Mailin({
+    const pop3Client = new Pop3({
         host: 'pop.gmail.com',
         port: 995,
-        secure: true,
+        ssl: true,
+        tls: true,
         username: GMAIL_EMAIL,
         password: GMAIL_PASSWORD,
     });
 
     try {
-        await mailin.start();
-        const messages = await mailin.getAllMessages();
+        await pop3Client.connect();
+        const messages = await pop3Client.list();
 
         if (messages.length === 0) {
             bot.sendMessage(chatId, 'Нет новых писем.');
-            await mailin.stop();
+            await pop3Client.quit();
             return;
         }
 
         let messageCount = 0;
         for (let i = 0; i < messages.length; i++) {
-            const message = messages[i];
+            const message = await pop3Client.retrieve(messages[i].number);
             const mailparser = new MailParser();
 
             mailparser.on('headers', (headers) => {
@@ -48,43 +49,44 @@ async function getMailList(chatId) {
 
             // После обработки всех писем завершаем соединение
             if (i === messages.length - 1) {
-                await mailin.stop();
+                await pop3Client.quit();
             }
         }
     } catch (err) {
         console.error(err);
         bot.sendMessage(chatId, 'Ошибка при получении списка писем.');
-        await mailin.stop();
+        await pop3Client.quit();
     }
 }
 
 // Функция для удаления письма по номеру
 async function deleteMail(number, chatId) {
-    const mailin = new Mailin({
+    const pop3Client = new Pop3({
         host: 'pop.gmail.com',
         port: 995,
-        secure: true,
+        ssl: true,
+        tls: true,
         username: GMAIL_EMAIL,
         password: GMAIL_PASSWORD,
     });
 
     try {
-        await mailin.start();
-        const messages = await mailin.getAllMessages();
+        await pop3Client.connect();
+        const messages = await pop3Client.list();
 
         if (number > messages.length || number < 1) {
             bot.sendMessage(chatId, 'Неверный номер письма.');
-            await mailin.stop();
+            await pop3Client.quit();
             return;
         }
 
-        await mailin.deleteMessage(messages[number - 1].uid);
+        await pop3Client.deleteMessage(number);
         bot.sendMessage(chatId, 'Письмо успешно удалено.');
-        await mailin.stop();
+        await pop3Client.quit();
     } catch (err) {
         console.error(err);
         bot.sendMessage(chatId, 'Ошибка при удалении письма.');
-        await mailin.stop();
+        await pop3Client.quit();
     }
 }
 

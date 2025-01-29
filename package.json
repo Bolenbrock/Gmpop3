@@ -23,6 +23,7 @@
     "mailin": "^3.0.4",
     "mailparser": "^3.7.2",
     "node-telegram-bot-api": "^0.66.0",
+    "pop3": "^0.2.0",
     "poplib": "^0.1.7"
   },
   "description": ""
