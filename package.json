@@ -1,5 +1,5 @@
 {
-  "name": "telega",
+  "name": "gmpop3",
   "version": "1.0.0",
   "main": "bot.js",
   "scripts": {
@@ -7,20 +7,23 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Bolenbrock/telega.git"
+    "url": "git+https://github.com/Bolenbrock/Gmpop3.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/Bolenbrock/telega/issues"
+    "url": "https://github.com/Bolenbrock/Gmpop3/issues"
   },
-  "homepage": "https://github.com/Bolenbrock/telega#readme",
-  "description": "",
+  "homepage": "https://github.com/Bolenbrock/Gmpop3#readme",
   "dependencies": {
-    "node-telegram-bot-api": "^0.64.0",
-    "axios": "^1.6.7",
-    "dotenv": "^16.4.5"
-  }
+    "dotenv": "^16.4.7",
+    "fs": "^0.0.1-security",
+    "mailparser": "^3.7.2",
+    "node-telegram-bot-api": "^0.66.0",
+    "poplib": "^0.1.7"
+  },
+  "devDependencies": {},
+  "description": ""
 }
