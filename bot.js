@@ -24,21 +24,42 @@ async function getMailList(chatId) {
 
     try {
         // Подключаемся к серверу
-        await client.connect();
+        await new Promise((resolve, reject) => {
+             client.connect(function (err) {
+                 if(err) reject(err)
+                 resolve()
+             })
+        });
+
        
         // Получаем список сообщений
-        const messages = await client.list();
+        const messages = await new Promise((resolve, reject) => {
+            client.list(function (err, list) {
+                if (err) reject(err);
+                resolve(list)
+            })
+        });
 
         if (messages.length === 0) {
             bot.sendMessage(chatId, 'Нет новых писем.');
-            await client.quit();
+            await new Promise((resolve, reject) => {
+               client.quit(function(err) {
+                   if(err) reject(err)
+                   resolve()
+               })
+           });
             return;
         }
 
         let messageCount = 0;
         for (const messageInfo of messages) {
             // Извлекаем сообщение по номеру
-            const message = await client.retr(messageInfo.number);
+            const message = await new Promise((resolve, reject) => {
+                client.retr(messageInfo.number, function (err, data) {
+                    if (err) reject(err)
+                    resolve(data)
+                })
+            });
            
             const mailparser = new MailParser();
 
@@ -54,11 +75,21 @@ async function getMailList(chatId) {
 
            
         }
-         await client.quit(); // Закрываем соединение
+         await new Promise((resolve, reject) => {
+             client.quit(function(err) {
+                 if(err) reject(err)
+                 resolve()
+             })
+         });
     } catch (err) {
         console.error(err);
         bot.sendMessage(chatId, 'Ошибка при получении списка писем.');
-         await client.quit(); // Закрываем соединение даже при ошибке
+         await new Promise((resolve, reject) => {
+             client.quit(function(err) {
+                 if(err) reject(err)
+                 resolve()
+             })
+         });
     }
 }
 
@@ -73,22 +104,52 @@ async function deleteMail(number, chatId) {
     });
 
     try {
-         await client.connect();
-        const messages = await client.list();
+         await new Promise((resolve, reject) => {
+             client.connect(function (err) {
+                 if(err) reject(err)
+                 resolve()
+             })
+         });
+        const messages =  await new Promise((resolve, reject) => {
+            client.list(function (err, list) {
+                if (err) reject(err);
+                resolve(list)
+            })
+        });
 
         if (number > messages.length || number < 1) {
             bot.sendMessage(chatId, 'Неверный номер письма.');
-            await client.quit();
+             await new Promise((resolve, reject) => {
+                 client.quit(function(err) {
+                     if(err) reject(err)
+                     resolve()
+                 })
+             });
             return;
         }
 
-        await client.dele(number);
+         await new Promise((resolve, reject) => {
+            client.dele(number, function(err) {
+                if(err) reject(err)
+                resolve()
+            })
+        });
         bot.sendMessage(chatId, 'Письмо успешно удалено.');
-        await client.quit();
+        await new Promise((resolve, reject) => {
+            client.quit(function(err) {
+                if(err) reject(err)
+                resolve()
+            })
+        });
     } catch (err) {
         console.error(err);
         bot.sendMessage(chatId, 'Ошибка при удалении письма.');
-        await client.quit();
+         await new Promise((resolve, reject) => {
+            client.quit(function(err) {
+                if(err) reject(err)
+                resolve()
+            })
+        });
     }
 }
 
