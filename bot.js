@@ -14,7 +14,7 @@ const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
 // Функция для получения списка писем
 async function getMailList(chatId) {
     console.log(`getMailList: start, chatId: ${chatId}`);
-
+      console.log(`getMailList: using email: ${GMAIL_EMAIL}, chatId: ${chatId}`);
     // Создаем экземпляр POP3 клиента
     const client = new Pop3({
         host: 'pop.gmail.com',
@@ -22,6 +22,7 @@ async function getMailList(chatId) {
         tls: true, // Используем TLS для безопасного соединения
         user: GMAIL_EMAIL,
         password: GMAIL_PASSWORD,
+        timeout: 10000, // устанавливаем таймаут 10 секунд
     });
     console.log(`getMailList: pop3 client created, chatId: ${chatId}`);
 
@@ -93,10 +94,10 @@ async function getMailList(chatId) {
                 bot.sendMessage(chatId, `Письмо ${messageCount}:\nОт: ${from}\nТема: ${subject}`);
                  console.log(`getMailList: send message to bot, message number: ${messageInfo.number}, chatId: ${chatId}, from: ${from}, subject: ${subject}`);
             });
-
+              console.log(`getMailList: mailparser write, message number: ${messageInfo.number}, chatId: ${chatId}`);
             mailparser.write(message.raw);
             mailparser.end();
-
+             console.log(`getMailList: mailparser end, message number: ${messageInfo.number}, chatId: ${chatId}`);
            
         }
           console.log(`getMailList: quitting from pop3 server, chatId: ${chatId}`);
@@ -130,12 +131,14 @@ async function getMailList(chatId) {
 // Функция для удаления письма по номеру
 async function deleteMail(number, chatId) {
      console.log(`deleteMail: start, chatId: ${chatId}, number: ${number}`);
+      console.log(`deleteMail: using email: ${GMAIL_EMAIL}, chatId: ${chatId}, number: ${number}`);
     const client = new Pop3({
         host: 'pop.gmail.com',
         port: 995,
         tls: true,
         user: GMAIL_EMAIL,
         password: GMAIL_PASSWORD,
+         timeout: 10000, // устанавливаем таймаут 10 секунд
     });
      console.log(`deleteMail: pop3 client created, chatId: ${chatId}, number: ${number}`);
     try {
